@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智慧水利数字孪生平台</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#0a1628; --bg2:#0d1e35; --panel:rgba(15,35,62,.85); --panel2:rgba(20,45,80,.7);
+    --line:rgba(64,150,255,.22); --cyan:#00d4ff; --blue:#2563eb; --purple:#7c3aed;
+    --green:#2dd4a7; --yellow:#f5c542; --orange:#ff8a3d; --red:#ff5470;
+    --txt:#dcecff; --txt2:#8fb3d9; --txt3:#5f7ea6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(64,150,255,.3);border-radius:3px}
+  ::-webkit-scrollbar-track{background:transparent}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ---------- 登录 ---------- */
+  #login{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(1200px 600px at 50% 30%,#12305c 0%,#0a1628 60%,#060d1a 100%)}
+  #login.hide{display:none}
+  .login-box{width:400px;padding:44px 40px;background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(8px)}
+  .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .login-logo .mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:24px}
+  .login-logo h1{font-size:20px;letter-spacing:2px}
+  .login-sub{color:var(--txt3);font-size:12px;margin-bottom:30px;letter-spacing:1px}
+  .login-box label{display:block;font-size:12px;color:var(--txt2);margin:14px 0 6px}
+  .login-box input{width:100%;height:40px;padding:0 12px;background:rgba(10,25,48,.8);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:14px;outline:none}
+  .login-box input:focus{border-color:var(--cyan)}
+  .login-btn{width:100%;height:42px;margin-top:26px;border:none;border-radius:8px;font-size:15px;letter-spacing:6px;
+    background:linear-gradient(90deg,var(--blue),var(--cyan));color:#fff}
+  .login-btn:hover{filter:brightness(1.15)}
+  .login-tip{margin-top:14px;font-size:11px;color:var(--txt3);text-align:center}
+
+  /* ---------- 布局 ---------- */
+  #app{display:none;height:100%}
+  #app.show{display:flex}
+  #sidebar{width:216px;flex-shrink:0;background:linear-gradient(180deg,#0c1d34,#0a1628);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow-y:auto}
+  .side-logo{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid var(--line)}
+  .side-logo .mark{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .side-logo b{font-size:14px;letter-spacing:1px}
+  .side-logo small{display:block;font-size:10px;color:var(--txt3);letter-spacing:2px}
+  .nav-group{margin-top:4px}
+  .nav-group-title{padding:10px 16px 4px;font-size:11px;color:var(--txt3);letter-spacing:2px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:var(--txt2);cursor:pointer;border-left:3px solid transparent;transition:.15s}
+  .nav-item:hover{color:var(--txt);background:rgba(37,99,235,.12)}
+  .nav-item.active{color:#fff;background:linear-gradient(90deg,rgba(0,212,255,.16),transparent);border-left-color:var(--cyan)}
+  .nav-item .ico{width:18px;text-align:center;flex-shrink:0}
+
+  #main{flex:1;display:flex;flex-direction:column;min-width:0}
+  #topbar{height:54px;flex-shrink:0;display:flex;align-items:center;gap:18px;padding:0 20px;
+    background:rgba(12,29,52,.9);border-bottom:1px solid var(--line)}
+  #topbar .crumb{font-size:15px;font-weight:600;letter-spacing:1px}
+  #topbar .search{flex:1;max-width:360px;height:32px;display:flex;align-items:center;gap:8px;padding:0 12px;
+    background:rgba(10,25,48,.8);border:1px solid var(--line);border-radius:16px;color:var(--txt3);font-size:12px}
+  #topbar .sp{flex:1}
+  #topbar .clock{font-size:13px;color:var(--txt2);font-variant-numeric:tabular-nums}
+  .bell{position:relative;font-size:17px;cursor:pointer}
+  .bell .dot{position:absolute;top:-3px;right:-5px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--red);
+    color:#fff;font-size:10px;line-height:15px;text-align:center}
+  .avatar{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2)}
+  .avatar .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+
+  #pages{flex:1;overflow:auto;padding:16px;min-height:0}
+  .page{display:none}
+  .page.active{display:block}
+
+  /* ---------- 通用组件 ---------- */
+  .page-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .page-head h2{font-size:17px;letter-spacing:1px}
+  .page-head .sub{font-size:12px;color:var(--txt3)}
+  .page-head .sp{flex:1}
+  .btn{height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--line);background:rgba(37,99,235,.15);color:var(--txt);font-size:12px;transition:.15s}
+  .btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .btn.primary{background:linear-gradient(90deg,var(--blue),#1a8fe0);border:none;color:#fff}
+  .btn.primary:hover{filter:brightness(1.15)}
+  .btn.sm{height:26px;padding:0 10px;font-size:11px}
+  .btn.ghost{background:transparent}
+  .btn.danger{background:rgba(255,84,112,.14);border-color:rgba(255,84,112,.4);color:#ff8ba0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h3{font-size:13px;color:var(--txt2);font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .card h3::before{content:"";width:3px;height:12px;background:linear-gradient(180deg,var(--cyan),var(--blue));border-radius:2px}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+  .stat .lb{font-size:12px;color:var(--txt2)}
+  .stat .v{font-size:26px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;background:linear-gradient(90deg,#7fd8ff,#4f8dff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .u{font-size:12px;color:var(--txt3);margin-left:4px;-webkit-text-fill-color:var(--txt3)}
+  .stat .trend{position:absolute;right:14px;top:14px;font-size:11px}
+  .stat::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:2px;background:linear-gradient(90deg,var(--cyan),transparent)}
+  .stat.warn::after{background:linear-gradient(90deg,var(--yellow),transparent)}
+  .stat.bad::after{background:linear-gradient(90deg,var(--red),transparent)}
+  .stat.ok::after{background:linear-gradient(90deg,var(--green),transparent)}
+  .up{color:var(--red)} .down{color:var(--green)}
+
+  table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+  table.tbl th{padding:9px 10px;text-align:left;color:var(--txt3);font-weight:500;background:rgba(37,99,235,.1);white-space:nowrap;border-bottom:1px solid var(--line)}
+  table.tbl td{padding:8px 10px;border-bottom:1px solid rgba(64,150,255,.1);color:var(--txt);white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.tbl tr:hover td{background:rgba(0,212,255,.06)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px}
+  .tag.blue{background:rgba(37,99,235,.2);color:#7fb1ff}
+  .tag.cyan{background:rgba(0,212,255,.14);color:var(--cyan)}
+  .tag.green{background:rgba(45,212,167,.14);color:var(--green)}
+  .tag.yellow{background:rgba(245,197,66,.14);color:var(--yellow)}
+  .tag.orange{background:rgba(255,138,61,.14);color:var(--orange)}
+  .tag.red{background:rgba(255,84,112,.16);color:#ff8ba0}
+  .tag.gray{background:rgba(120,140,170,.15);color:#9db4d0}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{height:28px;padding:0 12px;border-radius:14px;border:1px solid var(--line);background:transparent;color:var(--txt2);font-size:12px}
+  .chip.on{background:rgba(0,212,255,.15);border-color:var(--cyan);color:var(--cyan)}
+  select.sel,input.inp{height:30px;padding:0 10px;background:rgba(10,25,48,.8);border:1px solid var(--line);border-radius:6px;color:var(--txt);font-size:12px;outline:none}
+  .chart{width:100%;height:100%}
+  .empty{color:var(--txt3);font-size:12px;text-align:center;padding:30px 0}
+
+  /* ---------- 一张图 ---------- */
+  #page-map{padding:0;margin:-16px;height:calc(100% + 32px);position:relative;overflow:hidden}
+  .map-wrap{position:absolute;inset:0}
+  #basinSvg{width:100%;height:100%;display:block}
+  .map-toolbar{position:absolute;left:16px;bottom:16px;display:flex;gap:8px}
+  .map-toolbar .btn{background:rgba(10,25,48,.85);backdrop-filter:blur(4px)}
+  .layer-tree{position:absolute;left:16px;top:16px;width:190px;background:rgba(10,25,48,.88);border:1px solid var(--line);
+    border-radius:10px;padding:12px 14px;backdrop-filter:blur(6px)}
+  .layer-tree h4{font-size:13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  .layer-tree h4 span{font-size:11px;color:var(--txt3);cursor:pointer}
+  .layer-item{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--txt2);cursor:pointer}
+  .layer-item:hover{color:var(--txt)}
+  .sw{width:30px;height:16px;border-radius:8px;background:#24405f;position:relative;transition:.2s;flex-shrink:0}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#7d97b8;transition:.2s}
+  .sw.on{background:rgba(0,212,255,.4)}
+  .sw.on::after{left:16px;background:var(--cyan)}
+  .layer-item .ldot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .map-legend{position:absolute;right:16px;bottom:56px;background:rgba(10,25,48,.88);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--txt2);backdrop-filter:blur(6px)}
+  .map-legend div{display:flex;align-items:center;gap:8px;padding:3px 0}
+  .map-legend i{width:10px;height:10px;border-radius:50%}
+  #infoPanel{position:absolute;right:16px;top:16px;width:300px;max-height:calc(100% - 90px);overflow-y:auto;
+    background:rgba(10,25,48,.92);border:1px solid var(--line);border-radius:12px;padding:16px;backdrop-filter:blur(8px);display:none}
+  #infoPanel.show{display:block}
+  #infoPanel h4{font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  #infoPanel .close{cursor:pointer;color:var(--txt3);font-size:16px}
+  #infoPanel .close:hover{color:var(--red)}
+  .info-row{display:flex;justify-content:space-between;padding:7px 0;font-size:12px;border-bottom:1px dashed rgba(64,150,255,.15)}
+  .info-row b{color:var(--txt2);font-weight:400}
+  .info-big{text-align:center;padding:14px 0}
+  .info-big .num{font-size:34px;font-weight:700;background:linear-gradient(90deg,#7fd8ff,#4f8dff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .info-big .cap{font-size:11px;color:var(--txt3);margin-top:2px}
+  .alarm-ticker{position:absolute;left:230px;right:340px;bottom:16px;height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    background:rgba(10,25,48,.88);border:1px solid var(--line);border-radius:17px;font-size:12px;overflow:hidden}
+  .alarm-ticker .live{color:var(--red);flex-shrink:0;display:flex;align-items:center;gap:5px}
+  .blink{width:7px;height:7px;border-radius:50%;background:var(--red);animation:bl 1s infinite}
+  @keyframes bl{50%{opacity:.2}}
+  .ticker-body{flex:1;height:100%;overflow:hidden;position:relative}
+  .ticker-track{position:absolute;white-space:nowrap;line-height:34px;animation:tk 26s linear infinite}
+  @keyframes tk{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+  .marker{cursor:pointer}
+  .marker circle.core{stroke:#fff;stroke-width:1.5}
+  .marker.selected circle.ring{animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{stroke-opacity:.9;r:8}70%{stroke-opacity:0;r:18}100%{stroke-opacity:0;r:18}}
+  .marker:hover circle.core{filter:brightness(1.3)}
+
+  /* ---------- 方案卡片 ---------- */
+  .plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .plan-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .plan-card .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .plan-card .pt{font-size:14px;font-weight:600}
+  .plan-card .meta{font-size:11px;color:var(--txt3);line-height:2}
+  .plan-card .ops{display:flex;gap:8px;margin-top:10px}
+
+  /* ---------- 仿真 ---------- */
+  #floodPlay{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:5}
+  .sim-canvas{position:relative;height:420px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+    background:radial-gradient(900px 500px at 60% 40%,#12305c,#0a1628)}
+  .sim-canvas svg{width:100%;height:100%}
+  .sim-right{display:flex;flex-direction:column;gap:12px}
+
+  /* ---------- 驾驶舱 ---------- */
+  #page-screen{padding:0;margin:-16px;height:calc(100% + 32px);display:none;flex-direction:column}
+  #page-screen.active{display:flex}
+  .screen-head{height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;
+    background:linear-gradient(180deg,rgba(37,99,235,.25),transparent);border-bottom:1px solid var(--line)}
+  .screen-head h1{font-size:24px;letter-spacing:8px;background:linear-gradient(90deg,#7fd8ff,#4f8dff,#c084fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .screen-head .back{position:absolute;left:20px}
+  .screen-head .dt{position:absolute;right:20px;font-size:12px;color:var(--txt2)}
+  .screen-grid{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;padding:14px;min-height:0}
+  .screen-cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;min-height:0}
+  .screen-cell h3{font-size:13px;color:var(--txt2);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .screen-cell h3::before{content:"";width:3px;height:12px;background:linear-gradient(180deg,var(--cyan),var(--blue));border-radius:2px}
+  .screen-cell .cc{flex:1;min-height:0}
+  .kpi-strip{display:flex;gap:12px;flex-shrink:0;padding:0 14px 0}
+  .kpi-strip .stat{flex:1}
+
+  /* ---------- 移动端适配 ---------- */
+  #hamburger{display:none}
+  #sideMask{display:none;position:fixed;inset:0;background:rgba(4,10,20,.55);z-index:140}
+  #sidebar.open #sideMask{display:block}
+  @media (max-width: 900px){
+    #hamburger{display:inline-flex;align-items:center;justify-content:center}
+    #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:150;width:240px;transform:translateX(-100%);transition:transform .25s}
+    #sidebar.open{transform:translateX(0);box-shadow:8px 0 32px rgba(0,0,0,.55)}
+    #sideMask.open{display:block}
+    #topbar{gap:10px;padding:0 12px}
+    #topbar .search,#topbar .clock,.av-name{display:none}
+    #pages{padding:10px}
+    .grid.g4{grid-template-columns:repeat(2,1fr) !important}
+    .grid.g3{grid-template-columns:repeat(2,1fr) !important}
+    .grid.g2{grid-template-columns:1fr !important}
+    .grid{grid-template-columns:1fr !important}
+    .split{grid-template-columns:1fr !important}
+    .plan-grid{grid-template-columns:1fr !important}
+    .page-head{gap:8px}
+    .page-head .sub{width:100%;order:9}
+    .stat .v{font-size:22px}
+    table.tbl{font-size:11px}
+    .card{padding:12px}
+    .splitV{grid-template-columns:1fr !important}
+    .sim-right .card{min-height:260px}
+    /* 一张图 */
+    .layer-tree{width:148px;padding:8px 10px;top:12px;left:12px}
+    .layer-item{font-size:11px;padding:5px 0}
+    .map-toolbar{left:12px;right:12px;bottom:12px;flex-wrap:wrap}
+    .map-toolbar .btn{flex:1 1 30%;height:30px;font-size:11px}
+    .alarm-ticker,.map-legend{display:none}
+    #infoPanel{left:12px;right:12px;width:auto;top:auto;bottom:96px;max-height:48%}
+    /* 驾驶舱 */
+    #page-screen{margin:-10px;height:calc(100% + 20px);overflow-y:auto}
+    .screen-head{height:52px}
+    .screen-head h1{font-size:16px;letter-spacing:3px}
+    .screen-head .dt{display:none}
+    .kpi-strip{flex-wrap:wrap;padding:0 10px}
+    .kpi-strip .stat{flex:1 1 30%}
+    .kpi-strip .stat .v{font-size:20px}
+    .screen-grid{grid-template-columns:1fr !important;grid-template-rows:none;padding:10px;flex:none}
+    .screen-cell{height:250px;flex:none}
+  }
+  @media (max-width: 480px){
+    .login-box{width:92%;padding:32px 24px}
+    .grid.g4,.grid.g3{grid-template-columns:1fr 1fr !important}
+    .kpi-strip .stat{flex:1 1 45%}
+    .map-toolbar .btn{flex:1 1 45%}
+    #infoPanel{bottom:112px}
+  }
+
+  /* ---------- toast ---------- */
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-16px);z-index:300;padding:10px 22px;
+    background:rgba(13,40,72,.95);border:1px solid var(--cyan);border-radius:8px;font-size:13px;color:var(--cyan);
+    opacity:0;pointer-events:none;transition:.25s}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .tree{font-size:12px}
+  .tree .tnode{padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--txt2);display:flex;align-items:center;gap:6px}
+  .tree .tnode:hover{background:rgba(0,212,255,.08);color:var(--txt)}
+  .tree .tnode.on{background:rgba(0,212,255,.14);color:var(--cyan)}
+  .split{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:start}
+  .progress{height:6px;border-radius:3px;background:#1c3a5f;overflow:hidden}
+  .progress i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="mark">🌊</div>
+      <h1>智慧水利数字孪生平台</h1>
+    </div>
+    <div class="login-sub">SMART WATER DIGITAL TWIN PLATFORM · V2.1</div>
+    <label>账号</label>
+    <input id="loginUser" value="admin" autocomplete="off">
+    <label>密码</label>
+    <input id="loginPwd" type="password" value="123456">
+    <button class="login-btn" onclick="doLogin()">登 录</button>
+    <div class="login-tip">等保2.0三级 · HTTPS加密传输 · 双因素认证可选</div>
+  </div>
+</div>
+
+<!-- 主应用 -->
+<div id="app">
+  <aside id="sidebar">
+    <div class="side-logo">
+      <div class="mark">🌊</div>
+      <div><b>智慧水利平台</b><small>DIGITAL TWIN</small></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-item active" data-page="map"><span class="ico">🗺️</span>数字孪生一张图</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">物联感知监测</div>
+      <div class="nav-item" data-page="monitor"><span class="ico">📡</span>监测数据总览</div>
+      <div class="nav-item" data-page="curve"><span class="ico">📈</span>时序曲线分析</div>
+      <div class="nav-item" data-page="video"><span class="ico">📷</span>视频监控</div>
+      <div class="nav-item" data-page="device"><span class="ico">🧰</span>设备台账管理</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">模型仿真预演</div>
+      <div class="nav-item" data-page="model"><span class="ico">🧮</span>模型方案管理</div>
+      <div class="nav-item" data-page="sim"><span class="ico">🌊</span>仿真成果可视化</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">业务应用</div>
+      <div class="nav-item" data-page="flood"><span class="ico">🌧️</span>防汛·汛情监视</div>
+      <div class="nav-item" data-page="alarm"><span class="ico">🚨</span>防汛·预警管理</div>
+      <div class="nav-item" data-page="license"><span class="ico">📄</span>水资源·取水许可</div>
+      <div class="nav-item" data-page="wateruse"><span class="ico">🚰</span>水资源·取用水监测</div>
+      <div class="nav-item" data-page="supply"><span class="ico">🏭</span>供水·工程台账</div>
+      <div class="nav-item" data-page="quality"><span class="ico">🧪</span>供水·水质监测</div>
+      <div class="nav-item" data-page="canal"><span class="ico">💧</span>灌区·渠系台账</div>
+      <div class="nav-item" data-page="irrigation"><span class="ico">🌾</span>灌区·配水计划</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">工程运维</div>
+      <div class="nav-item" data-page="works"><span class="ico">🏗️</span>工程基础台账</div>
+      <div class="nav-item" data-page="order"><span class="ico">📋</span>巡检工单管理</div>
+      <div class="nav-item" data-page="defect"><span class="ico">🔧</span>缺陷维修养护</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">报表与系统</div>
+      <div class="nav-item" data-page="screen"><span class="ico">📊</span>领导驾驶舱大屏</div>
+      <div class="nav-item" data-page="report"><span class="ico">🗂️</span>自定义报表</div>
+      <div class="nav-item" data-page="sysuser"><span class="ico">👥</span>用户与角色</div>
+      <div class="nav-item" data-page="syslog"><span class="ico">📝</span>系统日志</div>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header id="topbar">
+      <button id="hamburger" class="btn ghost" onclick="toggleSidebar()">☰</button>
+      <div class="crumb" id="crumb">数字孪生一张图</div>
+      <div class="search">🔍 全局搜索：测站 / 工程 / 预案 / 工单…</div>
+      <div class="sp"></div>
+      <div class="clock" id="clock"></div>
+      <div class="bell" onclick="toast('3 条未读告警：橙色暴雨预警、超警戒水位、设备离线')">🔔<span class="dot">3</span></div>
+      <div class="avatar"><div class="av">张</div><span class="av-name">张工 · 系统管理员</span></div>
+    </header>
+
+    <div id="pages">
+      <!-- 一张图 -->
+      <section class="page active" id="page-map">
+        <div class="map-wrap">
+          <svg id="basinSvg" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice"></svg>
+          <div class="layer-tree">
+            <h4>图层管理 <span onclick="toast('图层树已收起（演示）')">«</span></h4>
+            <div class="layer-item" data-layer="rain"><span class="ldot" style="background:#4fc3f7"></span>雨情站<div class="sw on"></div></div>
+            <div class="layer-item" data-layer="water"><span class="ldot" style="background:#2dd4a7"></span>水情站<div class="sw on"></div></div>
+            <div class="layer-item" data-layer="works"><span class="ldot" style="background:#f5c542"></span>工情·闸坝<div class="sw on"></div></div>
+            <div class="layer-item" data-layer="video"><span class="ldot" style="background:#c084fc"></span>视频监控<div class="sw"></div></div>
+            <div class="layer-item" data-layer="project"><span class="ldot" style="background:#7fb1ff"></span>水利工程<div class="sw on"></div></div>
+            <div class="layer-item" data-layer="risk"><span class="ldot" style="background:#ff5470"></span>风险点<div class="sw on"></div></div>
+            <div class="layer-item" data-layer="topic"><span class="ldot" style="background:#ff8a3d"></span>专题图·雨量等值面<div class="sw"></div></div>
+          </div>
+          <div class="map-legend">
+            <div><i style="background:#4fc3f7"></i>雨量站</div>
+            <div><i style="background:#2dd4a7"></i>水文/水位站</div>
+            <div><i style="background:#f5c542"></i>闸坝</div>
+            <div><i style="background:#ff5470"></i>风险点</div>
+          </div>
+          <div id="infoPanel">
+            <h4><span id="ipName">—</span><span class="close" onclick="closePanel()">✕</span></h4>
+            <div id="ipBody"></div>
+          </div>
+          <div class="alarm-ticker">
+            <span class="live"><span class="blink"></span>实时告警</span>
+            <div class="ticker-body"><div class="ticker-track" id="ticker"></div></div>
+          </div>
+          <div class="map-toolbar">
+            <button class="btn" onclick="toast('距离量算：请在地图上取点（演示）')">📏 量算</button>
+            <button class="btn" onclick="toast('场景快照已保存（演示）')">📸 快照</button>
+            <button class="btn" onclick="startRoam()">🎬 场景漫游</button>
+            <button class="btn" onclick="toast('场景截图已导出 PNG（演示）')">🖼️ 截图导出</button>
+            <button class="btn" onclick="toast('图层透明度：75%（演示）')">🎨 透明度</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 其他页面容器（JS 渲染） -->
+      <section class="page" id="page-monitor"></section>
+      <section class="page" id="page-curve"></section>
+      <section class="page" id="page-video"></section>
+      <section class="page" id="page-device"></section>
+      <section class="page" id="page-model"></section>
+      <section class="page" id="page-sim"></section>
+      <section class="page" id="page-flood"></section>
+      <section class="page" id="page-alarm"></section>
+      <section class="page" id="page-license"></section>
+      <section class="page" id="page-wateruse"></section>
+      <section class="page" id="page-supply"></section>
+      <section class="page" id="page-quality"></section>
+      <section class="page" id="page-canal"></section>
+      <section class="page" id="page-irrigation"></section>
+      <section class="page" id="page-works"></section>
+      <section class="page" id="page-order"></section>
+      <section class="page" id="page-defect"></section>
+      <section class="page" id="page-report"></section>
+      <section class="page" id="page-sysuser"></section>
+      <section class="page" id="page-syslog"></section>
+      <section class="page" id="page-screen"></section>
+    </div>
+  </div>
+</div>
+
+<div id="sideMask" onclick="toggleSidebar()"></div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+function pad(n){return n<10?'0'+n:n}
+function fmtDT(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function fmtD(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+setInterval(()=>{const d=new Date();$('#clock').textContent=fmtDT(d)+' 周'+ '日一二三四五六'[d.getDay()];},1000);
+
+function doLogin(){
+  $('#login').classList.add('hide'); $('#app').classList.add('show');
+  toast('欢迎回来，张工（演示账号 admin）');
+  renderTicker(); renderMap();
+}
+
+/* ================= 模拟数据 ================= */
+const NOW = new Date();
+function hoursAgo(h){ const d=new Date(NOW.getTime()-h*3600e3); return fmtDT(d); }
+
+const STATIONS = [
+  {id:'HY01',name:'花园口水文站',type:'water',cat:'水文站',river:'黄河干流',x:830,y:505,value:78.42,warn:80.0,guar:82.5,unit:'m',status:'online'},
+  {id:'HY02',name:'白马寺水文站',type:'water',cat:'水文站',river:'洛河',x:340,y:262,value:132.65,warn:134.0,guar:136.0,unit:'m',status:'online'},
+  {id:'HY03',name:'龙门镇水文站',type:'water',cat:'水文站',river:'伊河',x:560,y:420,value:154.08,warn:155.5,guar:157.0,unit:'m',status:'online'},
+  {id:'HY04',name:'陆浑水库站',type:'water',cat:'水库站',river:'伊河上游',x:420,y:330,value:312.44,warn:315.0,guar:317.2,unit:'m',status:'online'},
+  {id:'HY05',name:'故县水库站',type:'water',cat:'水库站',river:'洛河上游',x:180,y:160,value:528.31,warn:531.0,guar:533.0,unit:'m',status:'online'},
+  {id:'RA01',name:'白马寺雨量站',type:'rain',cat:'雨量站',river:'洛河',x:310,y:230,value:42.5,unit:'mm',status:'online'},
+  {id:'RA02',name:'洛宁雨量站',type:'rain',cat:'雨量站',river:'洛河上游',x:150,y:230,value:67.2,unit:'mm',status:'online'},
+  {id:'RA03',name:'嵩县雨量站',type:'rain',cat:'雨量站',river:'伊河',x:520,y:380,value:88.6,unit:'mm',status:'online'},
+  {id:'RA04',name:'栾川雨量站',type:'rain',cat:'雨量站',river:'伊河上游',x:430,y:470,value:35.1,unit:'mm',status:'offline'},
+  {id:'GK01',name:'白马寺闸',type:'works',cat:'节制闸',river:'洛河',x:365,y:280,value:2.35,unit:'m',status:'online'},
+  {id:'GK02',name:'黑石关闸',type:'works',cat:'节制闸',river:'伊洛河',x:680,y:445,value:3.10,unit:'m',status:'online'},
+  {id:'VD01',name:'陆浑大坝前视摄像头',type:'video',cat:'视频监控',river:'伊河',x:445,y:345,value:0,unit:'',status:'online'},
+  {id:'VD02',name:'溢洪道摄像头',type:'video',cat:'视频监控',river:'伊河',x:475,y:318,value:0,unit:'',status:'online'},
+  {id:'RK01',name:'K12+300 管涌风险段',type:'risk',cat:'风险点',river:'伊河左堤',x:610,y:395,value:0,unit:'',status:'online'},
+  {id:'RK02',name:'龙尾坡滑坡风险体',type:'risk',cat:'风险点',river:'洛河南岸',x:250,y:300,value:0,unit:'',status:'online'}
+];
+const MARKER_COLOR = {rain:'#4fc3f7',water:'#2dd4a7',works:'#f5c542',video:'#c084fc',risk:'#ff5470'};
+
+const DEVICES = [
+  ['DEV001','翻斗式雨量计','JD-02','雨量计','嵩县雨量站','华云传感',5,'2023-06-12','12个月','2026-08-20','王建国','13803710001'],
+  ['DEV002','气泡式水位计','QB-300','水位计','花园口水文站','中水测讯',8,'2022-11-03','6个月','2026-09-05','李长海','13803710002'],
+  ['DEV003','雷达波流量计','RQ-40','流量计','龙门镇水文站','海康水文',3,'2024-03-18','12个月','2026-07-15','李长海','13803710002'],
+  ['DEV004','四参数水质仪','YS-4P','水质仪','供水管网2号监测点','普析通用',2,'2024-09-01','6个月','2026-09-22','赵敏','13803710003'],
+  ['DEV005','球型云台摄像机','DS-2DC','摄像头','陆浑大坝前视','海康威视',6,'2021-05-20','12个月','2026-06-10','王建国','13803710001'],
+  ['DEV006','遥测终端RTU','RTU-950','数采仪','故县水库站','中水测讯',4,'2023-02-14','6个月','2026-09-28','刘强','13803710004'],
+  ['DEV007','闸位计','GW-10','闸位计','白马寺闸','豫水自控',2,'2022-08-30','12个月','2026-05-11','刘强','13803710004']
+];
+
+const PLANS = [
+  {id:'MP2026-001',name:'黄河花园口段百年一遇洪水演进',type:'水动力模型',owner:'李工',status:'已完成',time:'2026-09-20 10:30',dur:'26min'},
+  {id:'MP2026-002',name:'陆浑水库三闸联调调度方案',type:'水库调度模型',owner:'张工',status:'已完成',time:'2026-09-22 15:10',dur:'12min'},
+  {id:'MP2026-003',name:'伊洛河流域产汇流模拟（P=5%）',type:'水文模型',owner:'王工',status:'计算中',time:'2026-09-29 14:02',dur:'—'},
+  {id:'MP2026-004',name:'灌区年度水资源优化配置',type:'水资源配置',owner:'赵工',status:'草稿',time:'2026-09-25 09:00',dur:'—'},
+  {id:'MP2026-005',name:'栾川灌区秋灌需水预测',type:'灌区模型',owner:'赵工',status:'失败',time:'2026-09-27 16:40',dur:'—'}
+];
+
+const ALARMS = [
+  {level:'orange',type:'暴雨预警',loc:'嵩县部分地区',metric:'3小时降雨 88.6mm',time:hoursAgo(1),status:'已派发'},
+  {level:'yellow',type:'超警戒水位',loc:'白马寺水文站',metric:'水位距警戒 1.35m',time:hoursAgo(3),status:'处置中'},
+  {level:'blue',type:'设备离线',loc:'栾川雨量站',metric:'RTU 心跳丢失 45min',time:hoursAgo(4),status:'待处置'},
+  {level:'red',type:'水质超标',loc:'管网2号监测点',metric:'余氯 0.08 mg/L 低于下限',time:hoursAgo(6),status:'已闭环'},
+  {level:'orange',type:'库容偏高',loc:'陆浑水库',metric:'超汛限 0.8m',time:hoursAgo(9),status:'处置中'}
+];
+const LEVEL_TXT={blue:['蓝色','gray'],yellow:['黄色','yellow'],orange:['橙色','orange'],red:['红色','red']};
+
+const LICENSES = [
+  ['QX2021-0031','洛阳金穗农业开发有限公司','91410300MA44XW21A','洛宁县洛河左岸',320,'2021-03-15','2026-03-14','农业灌溉','正常'],
+  ['QX2022-0117','伊川第二水厂','91410329MA9KQ77B','伊川县伊河右岸',860,'2022-06-01','2032-05-31','城镇供水','正常'],
+  ['QX2020-0088','嵩县矿产洗选厂','91410325MA3FQA90','嵩县田湖镇',150,'2020-09-10','2025-09-09','工业用水','已到期'],
+  ['QX2023-0042','栾川绿源灌区合作社','91410324MA8BXN3C','栾川县潭头镇',240,'2023-01-20','2033-01-19','农业灌溉','正常']
+];
+
+const SUPPLY = [
+  ['GY001','洛阳金水厂','水厂',12,2015,'洛阳市洛龙区','陈志远'],
+  ['GY002','伊川第二水厂','水厂',8,2019,'伊川县城关镇','刘向东'],
+  ['GY003','陆浑灌区一级泵站','泵站',6.5,2012,'嵩县田湖镇','王铁柱'],
+  ['GY004','新区加压泵站','泵站',3.2,2021,'洛龙区太康路','陈志远'],
+  ['GY005','高新区 DN800 输水管网','管网','—','2023','涧西区','韩磊']
+];
+
+const QUALITY = [
+  ['WQ001','水厂出厂水',hoursAgo(1),7.42,0.32,0.55,0.12,'合格',0],
+  ['WQ002','管网2号监测点',hoursAgo(1),7.15,0.58,0.08,0.21,'不合格·余氯低',1],
+  ['WQ003','管网5号监测点',hoursAgo(2),7.36,0.41,0.62,0.09,'合格',0],
+  ['WQ004','末梢水·伊川',hoursAgo(2),7.51,0.66,0.48,0.15,'合格',0],
+  ['WQ005','水厂出厂水',hoursAgo(3),7.38,0.29,0.58,0.11,'合格',0]
+];
+
+const CANALS = [
+  ['QX-01','陆浑总干渠','干渠',45.0,68.2,1968],
+  ['QX-02','陆浑东一干渠','支渠',12.0,32.5,1972],
+  ['QX-03','陆浑西干渠','支渠',10.0,28.4,1974],
+  ['QX-04','田湖斗渠','斗渠',2.5,6.8,1985],
+  ['QX-05','潭头斗渠','斗渠',2.0,5.2,1990]
+];
+const GATES2 = [
+  ['ZM-01','总干渠进水闸',4.0],['ZM-02','东一干分水闸',2.5],['ZM-03','西干分水闸',2.5],['ZM-04','田湖节制闸',1.2]
+];
+
+const ORDERS = [
+  ['WO2026-0218','陆浑水库汛前巡检','陆浑水库','常规巡检','2026-09-30','已完成','张伟','无缺陷','2026-09-28'],
+  ['WO2026-0221','白马寺闸闸门专项检查','白马寺闸','专项巡检','2026-10-03','待巡检','刘强','—','—'],
+  ['WO2026-0223','总干渠渠道日常巡查','陆浑总干渠','日常巡查','2026-09-29','待派发','—','—','—'],
+  ['WO2026-0219','嵩县雨量站设备巡检','嵩县雨量站','设备巡检','2026-09-27','已完成','王建国','RTU 信号弱','2026-09-27'],
+  ['WO2026-0215','伊河左堤汛期巡查','伊河左堤','汛期巡查','2026-09-26','已驳回','李强','记录不完整','—']
+];
+
+const DEFECTS = [
+  ['DF001','WO2026-0219','嵩县雨量站','设备故障','一般','2026-09-27','更换天线、加固馈线','王建国','2026-09-28','验收合格'],
+  ['DF002','WO2026-0218','陆浑大坝西侧坡','坡面冲刷','较大','2026-09-28','浆砌石修补 + 排水沟疏通','李长海','维修中','待验收'],
+  ['DF003','WO2026-0223','总干渠 K12+300','渗漏','重大','2026-09-29','待定方案','—','未开始','—'],
+  ['DF004','—','白马寺闸启闭机房','门窗破损','轻微','2026-09-20','更换锁具','刘强','2026-09-21','验收合格']
+];
+
+const USERS = [
+  ['U001','zhangwei','张伟','13803710011','调度中心','系统管理员','正常'],
+  ['U002','lich','李长海','13803710022','工管科','运维人员','正常'],
+  ['U003','wangjg','王建国','13803710033','工管科','运维人员','正常'],
+  ['U004','zhaom','赵敏','13803710044','水资源科','业务人员','正常'],
+  ['U005','visitor','访客账号','—','外单位','只读用户','停用']
+];
+
+const LOGS = [
+  ['L9801','zhangwei','192.168.3.21',hoursAgo(0.2),'仿真预演','启动水动力方案 MP2026-003 计算','成功'],
+  ['L9802','zhaom','192.168.3.45',hoursAgo(1.1),'水资源管理','导出9月取水许可台账','成功'],
+  ['L9803','lich','10.20.8.16',hoursAgo(2.4),'预警管理','派发黄色预警处置单','成功'],
+  ['L9804','visitor','58.22.101.7',hoursAgo(3.0),'登录','异地登录，触发二次认证','成功'],
+  ['L9805','wangjg','10.20.8.33',hoursAgo(5.6),'设备管理','编辑雨量计 DEV001 维保记录','成功'],
+  ['L9806','unknown','203.0.113.9',hoursAgo(7.2),'登录','连续5次密码错误，账号锁定','失败']
+];
+
+/* ================= 一张图 ================= */
+let mapInited=false;
+const layerOn={rain:true,water:true,works:true,video:false,project:true,risk:true,topic:false};
+let roamTimer=null;
+
+function renderMap(){
+  if(mapInited) return; mapInited=true;
+  const svg=$('#basinSvg');
+  svg.innerHTML = `
+  <defs>
+    <radialGradient id="ter" cx="45%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#12325c"/><stop offset="55%" stop-color="#0c2038"/><stop offset="100%" stop-color="#081426"/>
+    </radialGradient>
+    <linearGradient id="riv" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b6fb8"/><stop offset="100%" stop-color="#00d4ff"/>
+    </linearGradient>
+    <radialGradient id="res"><stop offset="0%" stop-color="#2dd4a7" stop-opacity=".9"/><stop offset="100%" stop-color="#1b6fb8" stop-opacity=".5"/></radialGradient>
+    <radialGradient id="topicRain"><stop offset="0%" stop-color="#ff5470" stop-opacity=".5"/><stop offset="60%" stop-color="#ff8a3d" stop-opacity=".35"/><stop offset="100%" stop-color="#ff8a3d" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1000" height="600" fill="url(#ter)"/>
+  <g opacity=".5">${contourLines()}</g>
+  <g id="gTopicRain" opacity="0">
+    <ellipse cx="520" cy="380" rx="120" ry="80" fill="url(#topicRain)"/>
+    <text x="520" y="330" fill="#ffb08a" font-size="11" text-anchor="middle">累计雨量 88.6mm（嵩县）</text>
+  </g>
+  <path d="M60,100 C200,140 260,220 340,262 C430,306 470,380 560,420 C660,463 780,470 945,520" fill="none" stroke="url(#riv)" stroke-width="10" stroke-linecap="round" opacity=".9"/>
+  <path d="M60,100 C200,140 260,220 340,262 C430,306 470,380 560,420 C660,463 780,470 945,520" fill="none" stroke="#bfe9ff" stroke-width="1.5" opacity=".35"/>
+  <path d="M300,70 C325,150 330,215 340,262" fill="none" stroke="#3f9be0" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+  <path d="M740,150 C660,280 610,370 560,420" fill="none" stroke="#3f9be0" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+  <path d="M120,380 C220,380 320,400 430,380" fill="none" stroke="#3f9be0" stroke-width="5" stroke-linecap="round" opacity=".7"/>
+  <text x="700" y="500" fill="#5f9fd0" font-size="14" font-style="italic">黄 河 干 流</text>
+  <text x="345" y="250" fill="#5f9fd0" font-size="12" font-style="italic">洛河</text>
+  <text x="585" y="430" fill="#5f9fd0" font-size="12" font-style="italic">伊河</text>
+  <g id="gProjects">
+    <ellipse cx="420" cy="330" rx="34" ry="20" fill="url(#res)" stroke="#2dd4a7" stroke-width="1.5"/>
+    <text x="420" y="334" fill="#d8fff2" font-size="11" text-anchor="middle">陆浑水库</text>
+    <ellipse cx="180" cy="160" rx="30" ry="17" fill="url(#res)" stroke="#2dd4a7" stroke-width="1.5"/>
+    <text x="180" y="164" fill="#d8fff2" font-size="11" text-anchor="middle">故县水库</text>
+  </g>
+  <g id="gMarkers"></g>`;
+
+  // markers
+  const gm=svg.querySelector('#gMarkers');
+  STATIONS.forEach(st=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','marker'); g.dataset.type=st.type; g.dataset.id=st.id;
+    const c=MARKER_COLOR[st.type]||'#7fb1ff';
+    const off = st.type==='video'||st.type==='risk' ? -6 : -8;
+    g.innerHTML = `
+      <circle class="ring" cx="${st.x}" cy="${st.y}" r="8" fill="none" stroke="${c}" stroke-width="2"/>
+      <circle class="core" cx="${st.x}" cy="${st.y}" r="6" fill="${c}" ${st.status==='offline'?'opacity=".45"':''}/>
+      <text x="${st.x}" y="${st.y+off}" fill="#cfe6ff" font-size="10" text-anchor="middle">${st.name}</text>`;
+    g.addEventListener('click',()=>selectStation(st,g));
+    gm.appendChild(g);
+  });
+
+  // layer toggles
+  $$('.layer-item').forEach(item=>{
+    item.addEventListener('click',()=>{
+      const k=item.dataset.layer; layerOn[k]=!layerOn[k];
+      item.querySelector('.sw').classList.toggle('on',layerOn[k]);
+      applyLayers();
+    });
+  });
+  applyLayers();
+}
+
+function contourLines(){
+  let s='';
+  for(let i=0;i<7;i++){
+    const y=70+i*75;
+    s+=`<path d="M0,${y} Q250,${y-30+i*8} 500,${y+10} T1000,${y-18}" fill="none" stroke="#1c3a5f" stroke-width="1"/>`;
+  }
+  return s;
+}
+
+function applyLayers(){
+  $$('#gMarkers .marker').forEach(m=>{
+    m.style.display = layerOn[m.dataset.type] ? '' : 'none';
+  });
+  const gp=$('#gProjects'); if(gp) gp.style.display = layerOn.project?'':'none';
+  const gt=$('#gTopicRain'); if(gt) gt.style.display = layerOn.topic?'':'none';
+}
+
+function selectStation(st,el){
+  $$('.marker').forEach(m=>m.classList.remove('selected'));
+  el.classList.add('selected');
+  $('#infoPanel').classList.add('show');
+  $('#ipName').textContent=st.name;
+  let big='',rows='';
+  if(st.type==='rain'){
+    big=`<div class="info-big"><div class="num">${st.value}</div><div class="cap">累计降雨量（mm）· 3h</div></div>`;
+  }else if(st.type==='water'){
+    const over = st.value>=st.warn;
+    big=`<div class="info-big"><div class="num" style="${over?'':''}">${st.value}</div><div class="cap">当前水位（m）· 警戒 ${st.warn} / 保证 ${st.guar}</div></div>`;
+  }else if(st.type==='works'){
+    big=`<div class="info-big"><div class="num">${st.value}</div><div class="cap">当前开度（m）</div></div>`;
+  }else if(st.type==='video'){
+    big=`<div style="height:120px;border-radius:8px;background:linear-gradient(135deg,#123, #245);display:flex;align-items:center;justify-content:center;color:#7fb1ff;font-size:12px;margin:10px 0">▶ GB/T28181 实时视频流（演示）</div>`;
+  }else{
+    big=`<div class="info-big"><div class="num" style="color:#ff8ba0;background:none;-webkit-text-fill-color:#ff8ba0">关注</div><div class="cap">风险点 · 建议加密巡查</div></div>`;
+  }
+  rows = `
+    <div class="info-row"><b>测站编码</b><span>${st.id}</span></div>
+    <div class="info-row"><b>类型</b><span>${st.cat}</span></div>
+    <div class="info-row"><b>所属河流</b><span>${st.river}</span></div>
+    <div class="info-row"><b>设备状态</b><span class="tag ${st.status==='online'?'green':'gray'}">${st.status==='online'?'在线':'离线'}</span></div>
+    <div class="info-row"><b>数据时间</b><span>${hoursAgo(0.05)}</span></div>`;
+  $('#ipBody').innerHTML = big+rows+`
+    <div style="height:110px;margin-top:10px" id="ipChart"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn sm primary" onclick="gotoCurve('${st.id}')">时序曲线</button>
+      <button class="btn sm" onclick="switchPage('sim');toast('已叠加至孪生场景（演示）')">进入仿真</button>
+      <button class="btn sm" onclick="toast('工程档案加载中（演示）')">工程档案</button>
+    </div>`;
+  drawSpark(st);
+}
+
+function closePanel(){ $('#infoPanel').classList.remove('show'); $$('.marker').forEach(m=>m.classList.remove('selected')); }
+
+function gotoCurve(id){
+  switchPage('curve');
+  const sel=$('#curveStation'); if(sel){ sel.value=id; drawCurveChart(); }
+}
+
+function startRoam(){
+  toast('场景漫游开始：陆浑水库 → 白马寺闸 → 花园口');
+  const pts=[[420,330],[365,280],[830,505]]; let i=0;
+  clearInterval(roamTimer);
+  roamTimer=setInterval(()=>{
+    const st=STATIONS.find(s=>Math.abs(s.x-pts[i][0])<2&&Math.abs(s.y-pts[i][1])<2);
+    if(st){ const m=$(`#gMarkers .marker[data-id="${st.id}"]`); if(m) selectStation(st,m); }
+    i++; if(i>=pts.length){ clearInterval(roamTimer); toast('漫游结束，共 3 个点位'); }
+  },2500);
+}
+
+function renderTicker(){
+  const msgs = ALARMS.map(a=>`【${LEVEL_TXT[a.level][0]}】${a.type} · ${a.loc} · ${a.metric}`).join('　　◆　　');
+  $('#ticker').textContent = msgs;
+}
+
+/* ================= 表格渲染 ================= */
+function tableHTML(cols,rows){
+  return `<div style="overflow:auto"><table class="tbl"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(td=>`<td>${td}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ================= 时序数据 ================= */
+function genSeries(n,base,amp,noise){
+  const out=[]; let v=base;
+  for(let i=0;i<n;i++){
+    v += (Math.random()-0.48)*noise + Math.sin(i/n*Math.PI*2.2)*amp/n*3;
+    out.push([hoursAgo(n-i), +v.toFixed(2)]);
+  }
+  return out;
+}
+
+/* ================= 页面定义 ================= */
+const CHARTS={}; // chart instances by key
+function mkChart(key,el,opt){
+  const c=echarts.init(el); c.setOption(opt); CHARTS[key]=c; return c;
+}
+const AXIS={axisLine:{lineStyle:{color:'rgba(64,150,255,.3)'}},axisLabel:{color:'#8fb3d9',fontSize:10},splitLine:{lineStyle:{color:'rgba(64,150,255,.12)'}}};
+const TIP={trigger:'axis',backgroundColor:'rgba(10,25,48,.92)',borderColor:'rgba(64,150,255,.4)',textStyle:{color:'#dcecff',fontSize:11}};
+
+/* ---- 监测总览 ---- */
+function pageMonitor(){
+  const stSum = type=>STATIONS.filter(s=>s.type===type).length;
+  const online = STATIONS.filter(s=>s.status==='online').length;
+  const rows = STATIONS.map(s=>{
+    const val = s.type==='rain' ? s.value+' mm' : (s.type==='water'? s.value+' m' : (s.type==='works'? s.value+' m':'—'));
+    const q = s.type==='water' ? `<span class="tag ${s.value>=s.warn?'red':'green'}">${s.value>=s.warn?'超警戒':'正常'}</span>` : '<span class="tag green">正常</span>';
+    return [s.id,s.name,s.cat,s.river,val,q,`<span class="tag ${s.status==='online'?'green':'gray'}">${s.status==='online'?'在线':'离线'}</span>`,hoursAgo(Math.random()*4),`<button class="btn sm ghost" onclick="gotoCurve('${s.id}')">曲线</button>`];
+  });
+  $('#page-monitor').innerHTML = `
+    <div class="page-head"><h2>监测数据总览</h2><span class="sub">IoT 接入引擎 · MQTT/HTTP · 刷新周期 3s</span>
+      <div class="sp"></div>
+      <select class="sel"><option>实时</option><option>今日</option><option>近7天</option><option>自定义</option></select>
+      <button class="btn primary" onclick="toast('监测报表导出任务已创建（演示）')">⬇ 批量导出报表</button></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat"><div class="lb">测站总数</div><div class="v">${STATIONS.length}</div></div>
+      <div class="stat ok"><div class="lb">在线测站</div><div class="v">${online}</div></div>
+      <div class="stat bad"><div class="lb">离线测站</div><div class="v">${STATIONS.length-online}</div></div>
+      <div class="stat warn"><div class="lb">今日告警</div><div class="v">${ALARMS.length}</div></div>
+    </div>
+    <div class="card">
+      <h3>实时监测列表 <span style="margin-left:auto;display:flex;gap:8px">
+        ${['全部','水文站','雨量站','闸坝'].map((t,i)=>`<button class="chip ${i===0?'on':''}" onclick="chipFilter(this)">${t}</button>`).join('')}</span></h3>
+      ${tableHTML(['测站编码','测站名称','类型','所属河流','监测值','数据质量','设备状态','更新时间','操作'],rows)}
+    </div>`;
+}
+function chipFilter(el){ el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); toast('筛选：'+el.textContent+'（演示）'); }
+
+/* ---- 时序曲线 ---- */
+function pageCurve(){
+  const opts = STATIONS.filter(s=>['water','rain'].includes(s.type)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  $('#page-curve').innerHTML = `
+    <div class="page-head"><h2>时序曲线分析</h2><span class="sub">时序数据库 · 5 年历史数据在线查询</span>
+      <div class="sp"></div>
+      <select class="sel" id="curveStation" onchange="drawCurveChart()">${opts}</select>
+      <select class="sel" id="curveRange" onchange="drawCurveChart()"><option value="24">近24小时</option><option value="72">近72小时</option><option value="168">近7天</option></select>
+      <button class="btn" onclick="toast('曲线图片已下载（演示）')">📷 下载图片</button></div>
+    <div class="card" style="height:340px;margin-bottom:12px"><h3 id="curveTitle">监测过程线</h3><div id="curveChart" class="chart" style="height:calc(100% - 28px)"></div></div>
+    <div class="card"><h3>时序数据明细</h3><div id="curveTable"></div></div>`;
+  drawCurveChart();
+}
+function drawCurveChart(){
+  const id=$('#curveStation').value, rng=+$('#curveRange').value;
+  const st=STATIONS.find(s=>s.id===id);
+  $('#curveTitle').textContent=`${st.name}（${st.cat}）监测过程线`;
+  const data=genSeries(rng, st.value||50, rng*0.08, st.type==='rain'?0.6:0.05);
+  const markLine = st.type==='water' ? {
+    symbol:'none',data:[
+      {yAxis:st.warn,lineStyle:{color:'#f5c542'},label:{formatter:'警戒 '+st.warn,color:'#f5c5cf'}},
+      {yAxis:st.guar,lineStyle:{color:'#ff5470'},label:{formatter:'保证 '+st.guar,color:'#ff8ba0'}}]
+  }:undefined;
+  mkChart('curve',$('#curveChart'),{
+    tooltip:TIP,grid:{left:50,right:20,top:20,bottom:60},
+    xAxis:{type:'time',...AXIS},yAxis:{type:'value',scale:true,...AXIS,name:st.unit,nameTextStyle:{color:'#8fb3d9'}},
+    series:[{name:st.name,type:'line',smooth:true,symbol:'none',data,
+      lineStyle:{width:2,color:'#00d4ff'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(0,212,255,.35)'},{offset:1,color:'rgba(0,212,255,0)'}]}},
+      markLine}]
+  });
+  $('#curveTable').innerHTML = tableHTML(['测站编码','监测时间','监测值（'+st.unit+'）','数据质量'],
+    data.slice(-30).reverse().map(d=>[st.id,d[0],d[1], Math.random()>0.92?'<span class="tag yellow">缺失</span>':'<span class="tag green">正常</span>']));
+}
+function drawSpark(st){
+  const el=$('#ipChart'); if(!el) return;
+  const data=genSeries(24, st.value||50, 0.5, st.type==='rain'?0.5:0.04);
+  echarts.init(el).setOption({
+    grid:{left:6,right:6,top:6,bottom:6},tooltip:{show:false},
+    xAxis:{type:'time',axisLabel:{show:false},axisLine:{show:false},splitLine:{show:false}},
+    yAxis:{type:'value',scale:true,axisLabel:{show:false},splitLine:{show:false}},
+    series:[{type:'line',data,symbol:'none',smooth:true,lineStyle:{color:'#00d4ff',width:1.5},areaStyle:{color:'rgba(0,212,255,.18)'}}]
+  });
+}
+
+/* ---- 视频 ---- */
+function pageVideo(){
+  const cams=[['VD01','陆浑大坝前视','伊河'],['VD02','溢洪道摄像头','伊河'],['VD03','白马寺闸上游','洛河'],['VD04','花园口险工段','黄河干流']];
+  const cells=cams.map((c,i)=>`<div style="aspect-ratio:16/9;border-radius:8px;border:1px solid var(--line);background:linear-gradient(135deg,#0e2238,#153a5e);position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#7fb1ff;font-size:12px">
+      <span style="font-size:26px">▶</span>GB/T28181 · ${c[1]}
+      <span style="font-size:10px;color:#5f7ea6">在线 · ${1920+ i*2}×${1080} · 25fps</span></div>
+    <span class="tag red" style="position:absolute;left:8px;top:8px">● LIVE</span></div>`).join('');
+  $('#page-video').innerHTML=`
+    <div class="page-head"><h2>视频监控集成</h2><span class="sub">国标 GB/T28181 平台对接 · 支持云台控制 / 抓图 / 回放</span>
+      <div class="sp"></div>
+      ${[1,4,9].map(n=>`<button class="chip ${n===4?'on':''}" onclick="$$('.splitV .chip').forEach(c=>c.classList.remove('on'));this.classList.add('on');toast('${n}分屏（演示）')">${n}分屏</button>`).join('')}</div>
+    <div class="split splitV" style="grid-template-columns:230px 1fr">
+      <div class="card"><h3>摄像头树</h3><div class="tree">
+        ${cams.map(c=>`<div class="tnode ${c[0]==='VD02'?'on':''}" onclick="toast('切换到 '+this.textContent.trim())">📷 ${c[1]}</div>`).join('')}
+      </div></div>
+      <div class="card"><h3>实时画面</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cells}</div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn" onclick="toast('已抓图保存（演示）')">📸 抓图</button>
+          <button class="btn" onclick="toast('录像回放：近24h（演示）')">⏮ 回放</button>
+          <button class="btn" onclick="toast('云台控制已启用（演示）')">🎛 云台</button>
+          <button class="btn" onclick="switchPage('map');toast('已在地图定位摄像头')">🗺 地图定位</button>
+        </div></div>
+    </div>`;
+}
+
+/* ---- 设备台账 ---- */
+function pageDevice(){
+  const rows=DEVICES.map(d=>[d[0],d[1],d[2],d[3],d[4],d[5],d[7],d[8],d[9],d[10],d[11],
+    `<button class="btn sm ghost" onclick="toast('设备详情 + 维保记录（演示）')">详情</button>`]);
+  $('#page-device').innerHTML=`
+    <div class="page-head"><h2>设备台账管理</h2><span class="sub">感知设备全生命周期档案 · 维保到期自动提醒</span>
+      <div class="sp"></div>
+      <button class="btn" onclick="toast('导入模板下载（演示）')">导入</button>
+      <button class="btn" onclick="toast('设备台账已导出 Excel（演示）')">导出</button>
+      <button class="btn primary" onclick="toast('新增设备表单（演示）')">＋ 新增设备</button></div>
+    <div class="split">
+      <div class="card"><h3>设备分类</h3><div class="tree">
+        ${['全部（'+DEVICES.length+'）','雨量计','水位计','流量计','水质仪','摄像头','数采仪','闸位计'].map((t,i)=>`<div class="tnode ${i===0?'on':''}" onclick="$$('.split .tnode').forEach(n=>n.classList.remove('on'));this.classList.add('on');toast('筛选 '+this.textContent.trim())">${t}</div>`).join('')}
+      </div></div>
+      <div class="card">${tableHTML(['设备ID','设备名称','型号','设备类型','安装位置','生产厂家','安装日期','维保周期','上次维保','负责人','电话','操作'],rows)}</div>
+    </div>`;
+}
+
+/* ---- 模型方案 ---- */
+function pageModel(){
+  const STATUS={草稿:'gray',计算中:'cyan',已完成:'green',失败:'red'};
+  const cards=PLANS.map(p=>`
+    <div class="plan-card">
+      <div class="ph"><span class="pt">${p.name}</span><span class="tag ${STATUS[p.status]}">${p.status}</span></div>
+      <div class="meta">方案编号：${p.id}<br>模型类型：${p.type}　计算耗时：${p.dur}<br>创建人：${p.owner}　创建时间：${p.time}</div>
+      <div class="ops">
+        <button class="btn sm" onclick="toast('编辑方案 ${p.id}（演示）')">编辑</button>
+        <button class="btn sm primary" onclick="toast('方案 ${p.id} 已提交计算引擎，预计 ≤30 分钟（演示）')">启动计算</button>
+        <button class="btn sm" onclick="switchPage('sim')">查看成果</button>
+        <button class="btn sm ghost" onclick="toast('预演汇报 PPT 已生成（演示）')">导出报告</button>
+      </div></div>`).join('');
+  $('#page-model').innerHTML=`
+    <div class="page-head"><h2>模型方案管理</h2><span class="sub">水文 / 水动力 / 水库调度 / 水资源配置 / 灌区模型</span>
+      <div class="sp"></div>
+      ${['全部','水文模型','水动力模型','水库调度模型','水资源配置','灌区模型'].map((t,i)=>`<button class="chip ${i===0?'on':''}" onclick="chipFilter(this)">${t}</button>`).join('')}
+      <button class="btn primary" onclick="toast('新建方案弹窗（演示）')">＋ 新建方案</button></div>
+    <div class="plan-grid">${cards}</div>
+    <div class="card" style="margin-top:12px"><h3>模型参数配置（流域参数 / 工程参数 / 边界条件）</h3>
+      ${tableHTML(['参数ID','参数名称','参数标识','参数值','单位','是否必填','说明'],[
+        ['P001','曼宁糙率系数','manning_n','0.030','—','是','主河槽综合糙率'],
+        ['P002','设计暴雨频率','rain_freq','5%','—','是','P=5% 一遇标准'],
+        ['P003','断面数据文件','section_file','伊河断面28处.zip','—','是','支持上传（演示）'],
+        ['P004','下游边界水位','downstream_h','76.50','m','是','花园口站控制水位'],
+        ['P005','计算时间步长','dt','60','s','否','默认自适应']
+      ])}</div>`;
+}
+
+/* ---- 仿真可视化 ---- */
+let simInited=false;
+function pageSim(){
+  $('#page-sim').innerHTML=`
+    <div class="page-head"><h2>仿真成果可视化</h2><span class="sub">洪水演进动态渲染 · 方案对比 · 一键生成预演汇报</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('预演汇报 PPT 已生成（演示）')">📑 生成预演汇报 PPT</button></div>
+    <div class="grid" style="grid-template-columns:230px 1fr 260px">
+      <div class="card"><h3>仿真成果</h3><div class="tree">
+        <div class="tnode on" onclick="toast('加载：洪水淹没范围（演示）')">🌊 洪水淹没范围</div>
+        <div class="tnode" onclick="toast('加载：水位过程线（演示）')">📈 水位过程线</div>
+        <div class="tnode" onclick="toast('加载：流量过程（演示）')">〰 流量过程</div>
+      </div>
+      <h3 style="margin-top:14px">方案列表</h3>
+      <div class="tree">
+        <div class="tnode on">百年一遇方案 A</div>
+        <div class="tnode">五十年一遇方案 B</div>
+      </div></div>
+      <div class="sim-canvas">
+        <svg id="floodSvg" viewBox="0 0 900 420">
+          <rect width="900" height="420" fill="url(#ter)"/>
+          <path d="M40,90 C200,130 300,210 420,250 C560,296 680,300 870,350" fill="none" stroke="#1b6fb8" stroke-width="9" stroke-linecap="round"/>
+          <ellipse cx="180" cy="120" rx="36" ry="20" fill="url(#res)" stroke="#2dd4a7"/>
+          <text x="180" y="124" fill="#d8fff2" font-size="11" text-anchor="middle">陆浑水库</text>
+          <text x="600" y="330" fill="#5f9fd0" font-size="12" font-style="italic">伊河下游</text>
+          <g id="floodZone" opacity="0">
+            <ellipse cx="480" cy="262" rx="60" ry="22" fill="#00d4ff" opacity=".35"/>
+            <ellipse cx="580" cy="290" rx="90" ry="30" fill="#00d4ff" opacity=".3"/>
+            <ellipse cx="700" cy="322" rx="120" ry="38" fill="#00d4ff" opacity=".28"/>
+            <ellipse cx="810" cy="345" rx="90" ry="30" fill="#00d4ff" opacity=".25"/>
+          </g>
+          <g id="floodLabels"></g>
+        </svg>
+        <div style="position:absolute;left:14px;top:12px;font-size:12px;color:#8fb3d9">
+          洪水演进动画 · <span id="floodT" style="color:#00d4ff">T+0 h</span></div>
+        <button class="btn primary" id="floodPlay" onclick="playFlood()">▶ 播放演进</button>
+      </div>
+      <div class="sim-right">
+        <div class="card"><h3>方案对比</h3>
+          ${tableHTML(['指标','方案A','方案B'],[
+            ['最高水位','78.92 m','78.45 m'],
+            ['淹没面积','42.6 km²','31.2 km²'],
+            ['最大流量','8,600 m³/s','7,100 m³/s'],
+            ['受灾人口','1.2 万人','0.6 万人'],
+            ['到达时间','9.5 h','12.0 h']])}
+        </div>
+        <div class="card" style="flex:1"><h3>最高水位过程</h3><div id="simChart" class="chart"></div></div>
+      </div>
+    </div>`;
+  if(!simInited){ simInited=true;
+    mkChart('sim',$('#simChart'),{tooltip:TIP,legend:{textStyle:{color:'#8fb3d9',fontSize:10},top:0},
+      grid:{left:44,right:10,top:26,bottom:26},
+      xAxis:{type:'time',...AXIS},yAxis:{type:'value',scale:true,...AXIS},
+      series:[
+        {name:'方案A 最高水位',type:'line',smooth:true,symbol:'none',data:genSeries(48,77.6,1.6,0.05),lineStyle:{color:'#ff5470',width:2}},
+        {name:'方案B 最高水位',type:'line',smooth:true,symbol:'none',data:genSeries(48,77.3,1.2,0.04),lineStyle:{color:'#f5c542',width:2}}]});
+  }
+}
+function playFlood(){
+  const zone=$('#floodZone'); if(!zone) return;
+  let t=0; const steps=40;
+  clearInterval(window._floodH);
+  toast('播放洪水演进动画：T+0 → T+20h');
+  window._floodH=setInterval(()=>{
+    t++;
+    zone.style.opacity=(t/steps).toFixed(2);
+    $('#floodT').textContent='T+'+(t/steps*20).toFixed(1)+' h';
+    if(t>=steps){clearInterval(window._floodH);toast('演进完成：最大淹没面积 42.6 km²（方案A）');}
+  },90);
+}
+
+/* ---- 防汛 ---- */
+function pageFlood(){
+  const over=STATIONS.filter(s=>s.type==='water'&&s.value>=s.warn*0.98);
+  const rows=STATIONS.filter(s=>s.type==='water'||s.type==='rain').map(s=>{
+    const lv = s.type==='rain' ? (s.value>=80?'orange':s.value>=50?'yellow':'blue') : (s.value>=s.warn?'orange':'blue');
+    return [s.id,s.name,hoursAgo(0.1), s.type==='rain'?s.value+' mm':s.value+' m',
+      s.type==='water'?s.warn+' m':'—', s.type==='water'?s.guar+' m':'—',
+      `<span class="tag ${LEVEL_TXT[lv][1]}">${LEVEL_TXT[lv][0]}</span>`,
+      `<button class="btn sm ghost" onclick="switchPage('alarm')">处置</button>`];
+  });
+  $('#page-flood').innerHTML=`
+    <div class="page-head"><h2>汛情监视总览</h2><span class="sub">四预：预报 · 预警 · 预演 · 预案</span>
+      <div class="sp"></div><button class="btn primary" onclick="switchPage('sim')">启动仿真预演</button></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat"><div class="lb">面平均累计降雨量</div><div class="v">58.4<span class="u">mm</span></div></div>
+      <div class="stat warn"><div class="lb">超警戒站点</div><div class="v">${over.length}<span class="u">处</span></div></div>
+      <div class="stat bad"><div class="lb">当前预警数量</div><div class="v">${ALARMS.length}<span class="u">条</span></div></div>
+      <div class="stat ok"><div class="lb">大型水库可调库容</div><div class="v">12.8<span class="u">亿m³</span></div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 340px;margin-bottom:12px">
+      <div class="card" style="height:300px"><h3>重点站点雨量/水位对比</h3><div id="floodChart" class="chart" style="height:calc(100% - 28px)"></div></div>
+      <div class="card"><h3>雨情工情列表</h3>
+        <div style="max-height:250px;overflow:auto">${tableHTML(['编码','名称','时间','监测值','警戒','保证','等级','操作'],rows)}</div></div>
+    </div>
+    <div class="card"><h3>滚动告警</h3>
+      ${ALARMS.map(a=>`<div class="info-row"><b><span class="tag ${LEVEL_TXT[a.level][1]}">${LEVEL_TXT[a.level][0]}</span> ${a.type}</b>
+        <span>${a.loc} · ${a.metric} · ${a.time} · <span class="tag ${a.status==='已闭环'?'green':a.status==='已派发'?'cyan':'yellow'}">${a.status}</span></span></div>`).join('')}
+    </div>`;
+  mkChart('flood',$('#floodChart'),{
+    tooltip:TIP,legend:{textStyle:{color:'#8fb3d9',fontSize:11},top:0},
+    grid:{left:46,right:20,top:30,bottom:50},
+    xAxis:{type:'category',data:['陆浑水库','白马寺站','龙门镇站','花园口站','故县水库'],...AXIS},
+    yAxis:{type:'value',...AXIS,name:'m',nameTextStyle:{color:'#8fb3d9'}},
+    series:[
+      {name:'当前水位',type:'bar',data:[312.44,132.65,154.08,78.42,528.31],itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#00d4ff'},{offset:1,color:'#1b6fb8'}]}},barWidth:18},
+      {name:'警戒水位',type:'scatter',data:[315,134,155.5,80,531],itemStyle:{color:'#f5c542'},symbolSize:10},
+      {name:'保证水位',type:'scatter',data:[317.2,136,157,82.5,533],itemStyle:{color:'#ff5470'},symbolSize:10}]});
+}
+
+function pageAlarm(){
+  const rows=ALARMS.map((a,i)=>{
+    const stTag = a.status==='已闭环'?'green':a.status==='已派发'?'cyan':a.status==='处置中'?'yellow':'gray';
+    return ['AL2026-0'+(900+i),`<span class="tag ${LEVEL_TXT[a.level][1]}">${LEVEL_TXT[a.level][0]}</span>`,a.type,a.loc,a.metric,a.time,
+      `<span class="tag ${stTag}">${a.status}</span>`,
+      `<button class="btn sm" onclick="toast('处置单派发成功（演示）')">派发</button>
+       <button class="btn sm ghost" onclick="toast('处置记录已填写（演示）')">处置</button>
+       <button class="btn sm danger" onclick="toast('预警已关闭闭环（演示）')">关闭</button>`];
+  });
+  $('#page-alarm').innerHTML=`
+    <div class="page-head"><h2>预警管理</h2><span class="sub">蓝 · 黄 · 橙 · 红 四级预警，处置闭环留痕</span>
+      <div class="sp"></div>
+      ${['全部','蓝色','黄色','橙色','红色'].map((t,i)=>`<button class="chip ${i===0?'on':''}" onclick="chipFilter(this)">${t}</button>`).join('')}</div>
+    <div class="card">${tableHTML(['预警ID','等级','类型','位置','触发指标','触发时间','处置状态','操作'],rows)}</div>
+    <div class="card" style="margin-top:12px"><h3>险情管理（上报 → 研判 → 派单 → 抢险 → 验收）</h3>
+      ${tableHTML(['险情ID','位置','类型','等级','发现时间','当前节点','负责人','操作'],[
+        ['XQ2026-012','伊河左堤 K12+300','管涌','重大',hoursAgo(26),'抢险中','张伟','<button class="btn sm ghost" onclick="toast(\'险情详情+现场照片视频（演示）\')">详情</button>'],
+        ['XQ2026-011','白马寺闸护坡','滑坡','较大',hoursAgo(50),'验收','李长海','<button class="btn sm ghost" onclick="toast(\'险情详情（演示）\')">详情</button>'],
+        ['XQ2026-010','龙尾坡风险体','裂缝','一般',hoursAgo(96),'已闭环','王建国','<button class="btn sm ghost" onclick="toast(\'险情详情（演示）\')">详情</button>']])}</div>
+    <div class="card" style="margin-top:12px"><h3>防汛预案与会商</h3>
+      ${tableHTML(['预案ID','预案名称','适用场景','版本','操作'],[
+        ['YA001','城市防洪应急预案','超标准洪水','V3.2','<button class="btn sm ghost" onclick="toast(\'预案下载（演示）\')">下载</button>'],
+        ['YA002','水库险情处置预案','大坝险情','V2.0','<button class="btn sm ghost" onclick="toast(\'预案下载（演示）\')">下载</button>']])}
+      <div style="margin-top:8px">${tableHTML(['会商ID','主题','时间','参会人员','结论'],[
+        ['HS031','伊河洪水调度会商',hoursAgo(20),'防办、水文局、水库管理处','陆浑水库按 500m³/s 下泄'],
+        ['HS030','周例会',hoursAgo(96),'各科室','继续保持汛期 24h 值班']])}</div></div>`;
+}
+
+/* ---- 水资源 ---- */
+function pageLicense(){
+  const rows=LICENSES.map(l=>[l[0],l[1],l[2],l[3],l[4]+' 万m³',l[5],l[6],l[7],
+    `<span class="tag ${l[8]==='正常'?'green':'red'}">${l[8]}</span>`,
+    `<button class="btn sm ghost" onclick="toast('许可附件扫描件预览（演示）')">附件</button>`]);
+  $('#page-license').innerHTML=`
+    <div class="page-head"><h2>取水许可管理</h2><span class="sub">许可台账 · 到期前 90 天自动提醒</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('新增取水许可表单（演示）')">＋ 新增许可</button></div>
+    <div class="card">${tableHTML(['许可ID','取水单位','统一社会信用代码','取水地点','许可水量','发证时间','到期时间','用途','状态','附件'],rows)}</div>
+    <div class="card" style="margin-top:12px"><h3>许可水量分布</h3><div id="licChart" class="chart" style="height:260px"></div></div>`;
+  mkChart('lic',$('#licChart'),{
+    tooltip:TIP,legend:{textStyle:{color:'#8fb3d9'}},
+    grid:{left:60,right:20,top:30,bottom:30},
+    xAxis:{type:'value',...AXIS,name:'万m³',nameTextStyle:{color:'#8fb3d9'}},
+    yAxis:{type:'category',data:LICENSES.map(l=>l[1]),...AXIS},
+    series:[{name:'许可水量',type:'bar',data:LICENSES.map(l=>l[4]),barWidth:16,
+      itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#1b6fb8'},{offset:1,color:'#00d4ff'}]}}}]});
+}
+
+function pageWateruse(){
+  const rows=LICENSES.map((l,i)=>['US2026-0'+(300+i),l[1],hoursAgo(0.2),(2.5+i*0.8).toFixed(2)+' m³/s',
+    (l[4]*0.42).toFixed(0)+' 万m³',l[4]+' 万m³',
+    `<span class="tag ${l[8]==='正常'?'green':'red'}">${l[8]==='正常'?'达标':'超计划'}</span>`]);
+  $('#page-wateruse').innerHTML=`
+    <div class="page-head"><h2>取用水监测</h2><span class="sub">实时取水计量 · 月度/年度对比 · 偏差预警</span></div>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div class="stat"><div class="lb">本年度累计取水量</div><div class="v">1,864<span class="u">万m³</span></div></div>
+      <div class="stat ok"><div class="lb">年度计划完成率</div><div class="v">62.1<span class="u">%</span></div></div>
+      <div class="stat warn"><div class="lb">超计划用水户</div><div class="v">1<span class="u">户</span></div></div>
+    </div>
+    <div class="card" style="height:300px;margin-bottom:12px"><h3>月度取水量对比（计划 vs 实际）</h3><div id="wuChart" class="chart" style="height:calc(100% - 28px)"></div></div>
+    <div class="card">${tableHTML(['记录ID','取水户','监测时间','瞬时流量','累计取水','计划用水','偏差状态'],rows)}</div>`;
+  const months=['4月','5月','6月','7月','8月','9月'];
+  mkChart('wu',$('#wuChart'),{tooltip:TIP,legend:{textStyle:{color:'#8fb3d9'}},
+    grid:{left:50,right:20,top:30,bottom:30},
+    xAxis:{type:'category',data:months,...AXIS},yAxis:{type:'value',...AXIS,name:'万m³',nameTextStyle:{color:'#8fb3d9'}},
+    series:[{name:'计划水量',type:'bar',data:[220,260,300,380,420,360],barWidth:14,itemStyle:{color:'rgba(64,150,255,.4)'}},
+      {name:'实际取水',type:'line',smooth:true,data:[198,245,312,402,438,269],lineStyle:{color:'#00d4ff',width:2},itemStyle:{color:'#00d4ff'}}]});
+}
+
+/* ---- 供水 ---- */
+function pageSupply(){
+  const rows=SUPPLY.map(s=>['SS'+s[0].slice(2),s[1],s[2],(s[3]==='—'?'—':s[3]+' 万m³/日'),s[4],s[5],s[6],
+    `<button class="btn sm ghost" onclick="switchPage('map');toast('已在地图定位：'+this.closest('tr').cells[1].textContent)">定位</button>`]);
+  $('#page-supply').innerHTML=`
+    <div class="page-head"><h2>供水工程台账</h2><span class="sub">水厂 · 泵站 · 管网 · GIS 节点定位</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('新增工程（演示）')">＋ 新增工程</button></div>
+    <div class="card">${tableHTML(['工程ID','工程名称','工程类型','设计供水能力','投产时间','地址','负责人','操作'],rows)}</div>
+    <div class="card" style="margin-top:12px"><h3>管网拓扑示意</h3>
+      <svg viewBox="0 0 900 200" style="width:100%;height:200px">
+        <path d="M40,100 H860" stroke="#1b6fb8" stroke-width="6"/>
+        <path d="M200,100 V40 M400,100 V160 M600,100 V40" stroke="#1b6fb8" stroke-width="4"/>
+        ${[40,200,400,600,860].map((x,i)=>`<circle cx="${x}" cy="100" r="9" fill="#0a1628" stroke="#00d4ff" stroke-width="2.5"/><text x="${x}" y="130" fill="#8fb3d9" font-size="10" text-anchor="middle">${['金水厂','加压泵站','DN800节点','DN600节点','伊川水厂'][i]}</text>`).join('')}
+        ${[200,400,600].map((x,i)=>`<circle cx="${x}" cy="${i===1?160:40}" r="7" fill="#0a1628" stroke="#2dd4a7" stroke-width="2"/><text x="${x}" y="${i===1?182:26}" fill="#8fb3d9" font-size="10" text-anchor="middle">${['监测点2','监测点5','监测点3'][i]}</text>`).join('')}
+      </svg></div>`;
+}
+function pageQuality(){
+  const rows=QUALITY.map(q=>['WQ'+q[0].slice(2),q[1],q[2],q[3],q[4],q[5],q[6],
+    `<span class="tag ${q[8]?'red':'green'}">${q[7]}</span>`,
+    `<button class="btn sm ghost" onclick="toast('历史曲线（演示）')">曲线</button>`]);
+  $('#page-quality').innerHTML=`
+    <div class="page-head"><h2>供水水质监测</h2><span class="sub">pH · 浊度 · 余氯 · 氨氮 · 超标自动告警</span></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat ok"><div class="lb">综合合格率（本月）</div><div class="v">98.7<span class="u">%</span></div></div>
+      <div class="stat"><div class="lb">监测点位数</div><div class="v">12</div></div>
+      <div class="stat bad"><div class="lb">当前超标项</div><div class="v">1<span class="u">项</span></div></div>
+      <div class="stat"><div class="lb">今日采样次数</div><div class="v">46</div></div>
+    </div>
+    <div class="card" style="height:280px;margin-bottom:12px"><h3>余氯 24h 过程线（下限 0.3 mg/L）</h3><div id="wqChart" class="chart" style="height:calc(100% - 28px)"></div></div>
+    <div class="card">${tableHTML(['记录ID','监测点位','采样时间','pH','浊度(NTU)','余氯(mg/L)','氨氮(mg/L)','检测结果','操作'],rows)}</div>`;
+  const d=genSeries(24,0.5,0.05,0.03);
+  mkChart('wq',$('#wqChart'),{tooltip:TIP,grid:{left:44,right:20,top:16,bottom:44},
+    xAxis:{type:'time',...AXIS},yAxis:{type:'value',scale:true,...AXIS},
+    series:[{name:'余氯',type:'line',data:d,symbol:'none',smooth:true,lineStyle:{color:'#2dd4a7',width:2},
+      markLine:{symbol:'none',data:[{yAxis:0.3,lineStyle:{color:'#ff5470'},label:{formatter:'下限 0.3',color:'#ff8ba0'}}]},
+      areaStyle:{color:'rgba(45,212,167,.15)'}}]});
+}
+
+/* ---- 灌区 ---- */
+function pageCanal(){
+  const rows=CANALS.map(c=>[c[0],c[1],c[2],c[3]+' m³/s',c[4]+' km',c[5],`<button class="btn sm ghost" onclick="toast('三维渠系视图（演示）')">三维</button>`]);
+  const rows2=GATES2.map(g=>[g[0],g[1],g[2]+' m','<span class="tag green">运行正常</span>']);
+  $('#page-canal').innerHTML=`
+    <div class="page-head"><h2>灌区渠系台账</h2><span class="sub">干 · 支 · 斗 · 农四级渠系 + 闸门台账</span></div>
+    <div class="card" style="margin-bottom:12px"><h3>渠系网络（三维地图展示）</h3>
+      <svg viewBox="0 0 900 220" style="width:100%;height:220px">
+        <rect width="900" height="220" fill="none"/>
+        <ellipse cx="120" cy="110" rx="45" ry="26" fill="url(#res)" stroke="#2dd4a7" stroke-width="1.5"/><text x="120" y="114" fill="#d8fff2" font-size="11" text-anchor="middle">陆浑水库</text>
+        <path d="M165,110 H850" stroke="#00d4ff" stroke-width="6" opacity=".8"/><text x="500" y="100" fill="#7fd8ff" font-size="11">总干渠 68.2km</text>
+        <path d="M320,110 C380,70 480,60 620,64" stroke="#3f9be0" stroke-width="4" fill="none"/><text x="470" y="52" fill="#8fb3d9" font-size="10">东一干渠 32.5km</text>
+        <path d="M320,110 C380,150 500,168 660,164" stroke="#3f9be0" stroke-width="4" fill="none"/><text x="480" y="192" fill="#8fb3d9" font-size="10">西干渠 28.4km</text>
+        <path d="M620,64 V110 M660,164 V110" stroke="#2dd4a7" stroke-width="3" opacity=".8"/>
+        ${[[320,'总干进水闸'],[620,'东一分水闸'],[660,'西一分水闸']].map(g=>`<circle cx="${g[0]}" cy="110" r="8" fill="#0a1628" stroke="#f5c542" stroke-width="2.5"/><text x="${g[0]}" y="134" fill="#f5c542" font-size="10" text-anchor="middle">${g[1]}</text>`).join('')}
+      </svg></div>
+    <div class="split">
+      <div class="card">${tableHTML(['渠系ID','名称','等级','设计流量','长度','建成','操作'],rows)}</div>
+      <div class="card">${tableHTML(['闸门ID','闸门名称','设计开度','状态'],rows2)}</div>
+    </div>`;
+}
+function pageIrrigation(){
+  const rows=[
+    ['DP2026-01','陆浑灌区','2026年度','8,600 万m³','48.2 万亩','8,215 万m³','<span class="tag green">偏差 4.5%</span>','—'],
+    ['DP2026-09','陆浑灌区','2026年9月','760 万m³','48.2 万亩','688 万m³','<span class="tag green">偏差 9.5%</span>','秋灌错峰'],
+    ['DP2026-10','陆浑灌区','2026年10月','520 万m³','30.0 万亩','—','<span class="tag gray">待执行</span>','计划已下发'],
+    ['DP2025-10','陆浑灌区','2025年10月','500 万m³','30.0 万亩','546 万m³','<span class="tag red">偏差 9.2%</span>','扩灌麦田']
+  ];
+  $('#page-irrigation').innerHTML=`
+    <div class="page-head"><h2>灌溉配水计划</h2><span class="sub">年度/月度计划下发 · 实际用水对比 · 偏差溯源</span>
+      <div class="sp"></div>
+      <button class="btn" onclick="toast('计划已下发至 3 个管理段（演示）')">下发计划</button>
+      <button class="btn primary" onclick="toast('新建配水计划（演示）')">＋ 新建计划</button></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat"><div class="lb">年度计划水量</div><div class="v">8,600<span class="u">万m³</span></div></div>
+      <div class="stat ok"><div class="lb">实际用水</div><div class="v">8,215<span class="u">万m³</span></div></div>
+      <div class="stat"><div class="lb">受益面积</div><div class="v">48.2<span class="u">万亩</span></div></div>
+      <div class="stat ok"><div class="lb">渠系水利用系数</div><div class="v">0.58</div></div>
+    </div>
+    <div class="card">${tableHTML(['计划ID','灌区','计划周期','计划水量','受益面积','实际用水','偏差','偏差原因'],rows)}</div>
+    <div class="card" style="margin-top:12px"><h3>月度配水完成情况</h3><div id="irChart" class="chart" style="height:260px"></div></div>`;
+  const m=['4月','5月','6月','7月','8月','9月'];
+  mkChart('ir',$('#irChart'),{tooltip:TIP,legend:{textStyle:{color:'#8fb3d9'}},
+    grid:{left:60,right:20,top:30,bottom:30},
+    xAxis:{type:'category',data:m,...AXIS},yAxis:{type:'value',...AXIS,name:'万m³',nameTextStyle:{color:'#8fb3d9'}},
+    series:[{name:'计划',type:'bar',data:[820,980,1250,1580,1720,760],barWidth:14,itemStyle:{color:'rgba(124,58,237,.55)'}},
+      {name:'实际',type:'bar',data:[790,935,1310,1650,1780,688],barWidth:14,itemStyle:{color:'#00d4ff'}}]});
+}
+
+/* ---- 运维 ---- */
+function pageWorks(){
+  const rows=[
+    ['GC001','陆浑水库','水库','伊河上游·嵩县','库容13.9亿m³·坝高55m','1965-08','1969-11','黄河流域Ⅰ级堤防工程'],
+    ['GC002','白马寺闸','水闸','洛河·老城区','设计流量1200m³/s','1978-03','1980-05','Ⅲ级水闸'],
+    ['GC003','伊河左堤','堤防','伊河·伊川段','堤长32.6km·50年一遇','1998-10','2001-06','2级堤防'],
+    ['GC004','洛阳金水厂','供水工程','洛龙区','供水12万m³/日','2013-04','2015-09','Ⅲ等工程']
+  ].map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],
+    `<button class="btn sm ghost" onclick="toast('工程档案：设计图纸/可研/验收资料（演示）')">档案</button>`]);
+  $('#page-works').innerHTML=`
+    <div class="page-head"><h2>工程基础台账</h2><span class="sub">水利工程档案库 · 设计参数 · 图纸附件</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('新增工程（演示）')">＋ 新增工程</button></div>
+    <div class="split">
+      <div class="card"><h3>工程分类</h3><div class="tree">
+        ${['全部（4）','水库','水闸','堤防','供水工程'].map((t,i)=>`<div class="tnode ${i===0?'on':''}" onclick="$$('.split .tnode').forEach(n=>n.classList.remove('on'));this.classList.add('on');toast('筛选 '+this.textContent.trim())">${t}</div>`).join('')}</div></div>
+      <div class="card">${tableHTML(['工程ID','名称','类型','所在流域/行政区','设计参数','建设时间','验收时间','简介','操作'],rows)}</div>
+    </div>`;
+}
+function pageOrder(){
+  const stTag={'待派发':'gray','待巡检':'yellow','已完成':'green','已驳回':'red'};
+  const rows=ORDERS.map(o=>['WO'+o[0].slice(2),o[1],o[2],o[3],o[4],`<span class="tag ${stTag[o[5]]}">${o[5]}</span>`,o[6],o[7],o[8],
+    `<button class="btn sm ghost" onclick="toast('工单详情+巡检点清单（演示）')">详情</button>`]);
+  $('#page-order').innerHTML=`
+    <div class="page-head"><h2>巡检工单管理</h2><span class="sub">周期计划自动生成工单 · 移动端接单 · 拍照/录音/定位打卡</span>
+      <div class="sp"></div>
+      <button class="btn" onclick="toast('新建巡检计划：每周自动生成工单（演示）')">新建巡检计划</button>
+      <button class="btn primary" onclick="toast('已派发（演示）')">派发工单</button></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat"><div class="lb">本月工单</div><div class="v">86</div></div>
+      <div class="stat warn"><div class="lb">待处理</div><div class="v">7</div></div>
+      <div class="stat ok"><div class="lb">按期完成率</div><div class="v">93.0<span class="u">%</span></div></div>
+      <div class="stat"><div class="lb">移动端在线运维人员</div><div class="v">14</div></div>
+    </div>
+    <div class="card">${tableHTML(['工单ID','工单名称','关联工程','巡检类型','计划时间','状态','巡检人','巡检结果/缺陷','完成时间','操作'],rows)}</div>`;
+}
+function pageDefect(){
+  const lvTag={'轻微':'gray','一般':'yellow','较大':'orange','重大':'red'};
+  const rows=DEFECTS.map(d=>[d[0],d[1],d[2],d[3],`<span class="tag ${lvTag[d[4]]}">${d[4]}</span>`,d[5],d[6],d[7],d[8],d[9],
+    `<button class="btn sm ghost" onclick="toast('维修派单（演示）')">派单</button>`]);
+  $('#page-defect').innerHTML=`
+    <div class="page-head"><h2>缺陷维修养护</h2><span class="sub">缺陷分级 · 维修派单 · 记录归档</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('登记缺陷（演示）')">＋ 登记缺陷</button></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="stat bad"><div class="lb">重大缺陷</div><div class="v">1</div></div>
+      <div class="stat warn"><div class="lb">较大缺陷</div><div class="v">1</div></div>
+      <div class="stat"><div class="lb">一般/轻微</div><div class="v">2</div></div>
+      <div class="stat ok"><div class="lb">本月已闭环</div><div class="v">2</div></div>
+    </div>
+    <div class="card">${tableHTML(['缺陷ID','关联工单','位置','类型','等级','发现时间','维修方案','负责人','完成时间','验收结果','操作'],rows)}</div>`;
+}
+
+/* ---- 报表 ---- */
+function pageReport(){
+  const rows=[
+    ['RB001','水情日报','时序监测数据','日','每日 08:00 自动生成','2026-09-29 08:00','<span class="tag green">启用</span>'],
+    ['RB002','月度取水量统计','取用水监测','月','每月 1 日自动生成','2026-09-01 06:00','<span class="tag green">启用</span>'],
+    ['RB003','水质旬报','水质监测','旬','手动生成','2026-09-25 14:20','<span class="tag gray">手动</span>'],
+    ['RB004','运维工单月报','巡检工单','月','每月 28 日自动生成','2026-09-28 09:00','<span class="tag green">启用</span>']
+  ].map(r=>[...r,`<button class="btn sm ghost" onclick="toast('已导出 Excel / PDF（演示）')">Excel</button>`, `<button class="btn sm ghost" onclick="toast('已导出 PDF（演示）')">PDF</button>`]);
+  $('#page-report').innerHTML=`
+    <div class="page-head"><h2>自定义报表</h2><span class="sub">数据源 · 统计维度 · 定时生成 · Excel/PDF 导出</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('新建报表（演示）')">＋ 新建报表</button></div>
+    <div class="card">${tableHTML(['模板ID','报表名称','数据源类型','统计周期','生成规则','最后生成','状态','导出Excel','导出PDF'],rows)}</div>
+    <div class="card" style="margin-top:12px"><h3>对外数据接口（上报上级水利平台）</h3>
+      ${tableHTML(['接口ID','接口名称','地址','方式','密钥','状态','调用次数','最近调用'],[
+        ['API001','水情数据上报','/api/v2/flood/report','POST','已配置','<span class="tag green">启用</span>','12,304','2min 前'],
+        ['API002','工情数据上报','/api/v2/works/report','POST','已配置','<span class="tag green">启用</span>','8,912','5min 前'],
+        ['API003','视频流共享','/api/v2/video/share','GET','已配置','<span class="tag yellow">限流</span>','2,140','1h 前'],
+        ['API004','GIS 服务','/api/v2/gis/query','GET','未配置','<span class="tag gray">停用</span>','0','—']])}</div>`;
+}
+
+/* ---- 系统管理 ---- */
+function pageSysuser(){
+  const rows=USERS.map(u=>[u[0],u[1],u[2],u[3],u[4],`<span class="tag blue">${u[5]}</span>`,
+    `<span class="tag ${u[6]==='正常'?'green':'gray'}">${u[6]}</span>`,
+    `<button class="btn sm ghost" onclick="toast('编辑用户（演示）')">编辑</button>
+     <button class="btn sm ghost" onclick="toast('密码已重置为初始密码（演示）')">重置密码</button>`]);
+  $('#page-sysuser').innerHTML=`
+    <div class="page-head"><h2>组织与用户管理</h2><span class="sub">功能权限 + 数据权限（按流域/工程分权）</span>
+      <div class="sp"></div><button class="btn primary" onclick="toast('新增用户（演示）')">＋ 新增用户</button></div>
+    <div class="split">
+      <div class="card"><h3>组织架构</h3><div class="tree">
+        ${['市水利局','├ 调度中心','├ 工管科','├ 水资源科','└ 水库管理处'].map((t,i)=>`<div class="tnode ${i===0?'on':''}" style="padding-left:${8+i*10}px" onclick="toast('切换组织（演示）')">${t}</div>`).join('')}</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">${tableHTML(['用户ID','用户名','姓名','手机号','所属组织','角色','状态','操作'],rows)}</div>
+        <div class="card"><h3>角色权限</h3>
+          ${tableHTML(['角色ID','角色名称','功能权限','数据权限'],[
+            ['R01','系统管理员','全部功能','全部流域'],
+            ['R02','调度决策员','防汛/仿真/驾驶舱','全市'],
+            ['R03','运维人员','工单/缺陷/设备','分管工程'],
+            ['R04','只读用户','查询/报表','授权范围']])}</div>
+      </div>
+    </div>`;
+}
+function pageSyslog(){
+  const rows=LOGS.map(l=>[l[0],l[1],l[2],l[3],l[4],l[5],
+    `<span class="tag ${l[6]==='成功'?'green':'red'}">${l[6]}</span>`]);
+  $('#page-syslog').innerHTML=`
+    <div class="page-head"><h2>系统日志</h2><span class="sub">操作留痕审计 · 等保2.0 三级要求</span>
+      <div class="sp"></div>
+      <select class="sel"><option>全部模块</option><option>登录</option><option>仿真预演</option><option>预警管理</option></select>
+      <button class="btn" onclick="toast('日志已导出（演示）')">导出</button></div>
+    <div class="card">${tableHTML(['日志ID','用户','IP','时间','操作模块','操作内容','结果'],rows)}</div>`;
+}
+
+/* ---- 驾驶舱大屏 ---- */
+let screenInited=false;
+function pageScreen(){
+  $('#page-screen').innerHTML=`
+    <div class="screen-head">
+      <button class="btn back" onclick="switchPage('map')">← 返回平台</button>
+      <h1>智慧水利 · 领导驾驶舱</h1>
+      <span class="dt" id="screenDt"></span>
+    </div>
+    <div class="kpi-strip">
+      <div class="stat"><div class="lb">监测站点在线率</div><div class="v">93.3<span class="u">%</span></div></div>
+      <div class="stat warn"><div class="lb">当前预警</div><div class="v">${ALARMS.length}<span class="u">条</span></div></div>
+      <div class="stat ok"><div class="lb">大中型水库蓄水率</div><div class="v">68.5<span class="u">%</span></div></div>
+      <div class="stat"><div class="lb">年累计取水量</div><div class="v">1,864<span class="u">万m³</span></div></div>
+      <div class="stat ok"><div class="lb">供水水质合格率</div><div class="v">98.7<span class="u">%</span></div></div>
+      <div class="stat"><div class="lb">工单按期完成率</div><div class="v">93.0<span class="u">%</span></div></div>
+    </div>
+    <div class="screen-grid">
+      <div class="screen-cell"><h3>面雨量趋势（近7日）</h3><div class="cc" id="sc1"></div></div>
+      <div class="screen-cell"><h3>重点站水位过程</h3><div class="cc" id="sc2"></div></div>
+      <div class="screen-cell"><h3>水库蓄水占比</h3><div class="cc" id="sc3"></div></div>
+      <div class="screen-cell"><h3>四类业务告警分布</h3><div class="cc" id="sc4"></div></div>
+      <div class="screen-cell"><h3>月度取水量 vs 供水量</h3><div class="cc" id="sc5"></div></div>
+      <div class="screen-cell"><h3>工单与缺陷闭环</h3><div class="cc" id="sc6"></div></div>
+    </div>`;
+  const mk=(id,opt)=>echarts.init($(id)).setOption(opt);
+  mk('#sc1',{tooltip:TIP,grid:{left:40,right:12,top:20,bottom:26},
+    xAxis:{type:'category',data:['9-23','9-24','9-25','9-26','9-27','9-28','9-29'],...AXIS},
+    yAxis:{type:'value',...AXIS},
+    series:[{type:'bar',data:[12,8,45,22,18,88,58],barWidth:14,itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#00d4ff'},{offset:1,color:'rgba(0,212,255,.1)'}]}}}]});
+  mk('#sc2',{tooltip:TIP,legend:{textStyle:{color:'#8fb3d9',fontSize:10},top:0},grid:{left:52,right:12,top:24,bottom:26},
+    xAxis:{type:'time',...AXIS},yAxis:{type:'value',scale:true,...AXIS},
+    series:[{name:'花园口',type:'line',symbol:'none',smooth:true,data:genSeries(24,78.3,0.9,0.04),lineStyle:{color:'#00d4ff',width:2}},
+      {name:'白马寺',type:'line',symbol:'none',smooth:true,data:genSeries(24,132.5,1.4,0.05),lineStyle:{color:'#c084fc',width:2}}]});
+  mk('#sc3',{tooltip:{...TIP,trigger:'item'},legend:{orient:'vertical',right:6,top:'center',textStyle:{color:'#8fb3d9',fontSize:10}},
+    series:[{type:'pie',radius:['45%','70%'],center:['38%','50%'],
+      data:[{name:'陆浑水库',value:6.4,itemStyle:{color:'#00d4ff'}},{name:'故县水库',value:4.1,itemStyle:{color:'#2563eb'}},{name:'其他',value:2.3,itemStyle:{color:'#7c3aed'}}],
+      label:{show:false}}]});
+  mk('#sc4',{tooltip:TIP,grid:{left:80,right:20,top:14,bottom:26},
+    xAxis:{type:'value',...AXIS},yAxis:{type:'category',data:['设备','水质','工情','雨情','水情'],...AXIS},
+    series:[{type:'bar',barWidth:12,data:[3,1,2,4,5],itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#2563eb'},{offset:1,color:'#ff8a3d'}]}}}]});
+  mk('#sc5',{tooltip:TIP,legend:{textStyle:{color:'#8fb3d9',fontSize:10},top:0},grid:{left:44,right:12,top:24,bottom:26},
+    xAxis:{type:'category',data:['5月','6月','7月','8月','9月'],...AXIS},yAxis:{type:'value',...AXIS},
+    series:[{name:'取水量',type:'bar',data:[245,312,402,438,269],barWidth:10,itemStyle:{color:'#2563eb'}},
+      {name:'供水量',type:'bar',data:[380,395,410,418,402],barWidth:10,itemStyle:{color:'#00d4ff'}}]});
+  mk('#sc6',{tooltip:TIP,grid:{left:40,right:12,top:20,bottom:26},
+    xAxis:{type:'category',data:['7月','8月','9月'],...AXIS},yAxis:{type:'value',...AXIS},
+    series:[{name:'工单',type:'line',smooth:true,data:[72,80,86],lineStyle:{color:'#00d4ff',width:2},itemStyle:{color:'#00d4ff'}},
+      {name:'缺陷闭环',type:'line',smooth:true,data:[8,11,9],lineStyle:{color:'#2dd4a7',width:2},itemStyle:{color:'#2dd4a7'}}]});
+  screenInited=true;
+  const upd=()=>{const el=$('#screenDt'); if(el) el.textContent=fmtDT(new Date());};
+  upd(); clearInterval(window._scrT); window._scrT=setInterval(upd,1000);
+}
+
+/* ================= 页面注册 ================= */
+const PAGE_FN={
+  monitor:pageMonitor,curve:pageCurve,video:pageVideo,device:pageDevice,
+  model:pageModel,sim:pageSim,flood:pageFlood,alarm:pageAlarm,
+  license:pageLicense,wateruse:pageWateruse,supply:pageSupply,quality:pageQuality,
+  canal:pageCanal,irrigation:pageIrrigation,works:pageWorks,order:pageOrder,defect:pageDefect,
+  report:pageReport,sysuser:pageSysuser,syslog:pageSyslog
+};
+const PAGE_TITLE={map:'数字孪生一张图',monitor:'物联感知 · 监测数据总览',curve:'物联感知 · 时序曲线分析',video:'物联感知 · 视频监控',device:'物联感知 · 设备台账管理',model:'仿真预演 · 模型方案管理',sim:'仿真预演 · 成果可视化',flood:'防汛 · 汛情监视总览',alarm:'防汛 · 预警管理',license:'水资源 · 取水许可管理',wateruse:'水资源 · 取用水监测',supply:'供水 · 工程台账',quality:'供水 · 水质监测',canal:'灌区 · 渠系台账',irrigation:'灌区 · 灌溉配水计划',works:'运维 · 工程基础台账',order:'运维 · 巡检工单管理',defect:'运维 · 缺陷维修养护',screen:'领导驾驶舱',report:'报表中心 · 自定义报表',sysuser:'系统管理 · 组织与用户',syslog:'系统管理 · 系统日志'};
+const rendered={};
+
+function switchPage(key){
+  const sb=$('#sidebar'); if(sb){ sb.classList.remove('open'); }
+  const mk=$('#sideMask'); if(mk){ mk.classList.remove('open'); }
+  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===key));
+  $$('.page').forEach(p=>p.classList.remove('active'));
+  const pg=$('#page-'+key); pg.classList.add('active');
+  $('#crumb').textContent=PAGE_TITLE[key]||key;
+  if(key==='map') return;
+  if(key==='screen'){ if(!rendered.screen){ rendered.screen=true; pageScreen(); } setTimeout(resizeAll,30); return; }
+  if(!rendered[key]){ rendered[key]=true; PAGE_FN[key]&&PAGE_FN[key](); }
+  setTimeout(resizeAll,30);
+}
+function resizeAll(){ Object.values(CHARTS).forEach(c=>c.resize()); }
+function toggleSidebar(){
+  const open=$('#sidebar').classList.toggle('open');
+  $('#sideMask').classList.toggle('open',open);
+}
+
+$$('.nav-item').forEach(n=>n.addEventListener('click',()=>switchPage(n.dataset.page)));
+window.addEventListener('resize',resizeAll);
+
+/* 演示：监测数据每 8s 微刷新 */
+setInterval(()=>{
+  if(!mapInited) return;
+  ['HY01','HY02','HY03'].forEach(id=>{
+    const st=STATIONS.find(s=>s.id===id);
+    st.value=+(st.value+(Math.random()-0.5)*0.02).toFixed(2);
+  });
+},8000);
+</script>
+</body>
+</html>
